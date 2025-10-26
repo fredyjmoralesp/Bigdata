@@ -1,0 +1,24 @@
+from pyspark.sql import SparkSession, functions as F
+
+# Crear sesión de Spark
+spark = SparkSession.builder.appName("Procesamiento_RS3U").getOrCreate()
+
+# Cargar datos desde la fuente original
+url = "https://www.datos.gov.co/resource/rs3u-8r4q.csv"
+df = spark.read.option("header", True).csv(url, inferSchema=True)
+
+# Limpieza básica
+df_clean = df.na.drop("all")
+
+# Transformación: eliminar espacios y poner columnas en minúsculas
+for col in df_clean.columns:
+    df_clean = df_clean.withColumnRenamed(col, col.lower().replace(" ", "_"))
+
+# Análisis exploratorio básico
+df_clean.describe().show()
+df_clean.select([F.count(F.when(F.col(c).isNull(), c)).alias(c) for c in df_clean.columns]).show()
+
+# Guardar resultados procesados
+df_clean.write.mode("overwrite").csv("/home/ubuntu/resultado_rs3u")
+
+spark.stop()
