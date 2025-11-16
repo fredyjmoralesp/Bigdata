@@ -1,0 +1,134 @@
+#Insertar un documento.
+
+db.sectores_siniestralidad.insertOne({
+  sector_id: 101,
+  nombre_sector: "Sector A",
+  municipio: "Pitalito",
+  departamento: "Huila",
+  latitud: 1.8523,
+  longitud: -76.1488,
+  numero_accidentes: 50,
+  numero_heridos: 20,
+  numero_muertos: 5,
+  periodo: "2023"
+});
+
+#insertar varios documentos
+
+db.sectores_siniestralidad.insertMany([
+  {
+    sector_id: 102,
+    nombre_sector: "Sector B",
+    municipio: "Neiva",
+    departamento: "Huila",
+    latitud: 2.9309,
+    longitud: -75.2809,
+    numero_accidentes: 30,
+    numero_heridos: 10,
+    numero_muertos: 2,
+    periodo: "2023"
+  },
+  {
+    sector_id: 103,
+    nombre_sector: "Sector C",
+    municipio: "Campoalegre",
+    departamento: "Huila",
+    latitud: 2.9600,
+    longitud: -75.4500,
+    numero_accidentes: 40,
+    numero_heridos: 15,
+    numero_muertos: 4,
+    periodo: "2023"
+  }
+]);
+
+# selección para obtener los datos de sectores
+
+db.sectores_siniestralidad.find();
+
+#selección para visualizar solo algunos datos de sectores
+
+db.sectores_siniestralidad.find(
+  {},
+  { nombre_sector: 1, municipio: 1, numero_accidentes: 1, _id: 0 }
+);
+
+#actualizar el numero de muertos en un sector
+
+db.sectores_siniestralidad.updateOne(
+  { sector_id: 101 },
+  { $set: { numero_accidentes: 55 } }
+);
+
+#eliminar un sector por id
+
+db.sectores_siniestralidad.deleteOne({ sector_id: 103 });
+
+#consulta de los sectores donde han habido mas de 40 accidentes y mínimo una muerte
+
+db.sectores_siniestralidad.find({
+  $and: [
+    { numero_accidentes: { $gt: 40 } },
+    { numero_muertos: { $gte: 1 } }
+  ]
+});
+
+#Conteo de sectores por municipio
+
+db.sectores_siniestralidad.aggregate([
+  {
+    $group: {
+      _id: "$municipio",
+      total_sectores: { $sum: 1 }
+    }
+  },
+  { $sort: { total_sectores: -1 } }
+]);
+
+#Sumar el total de accidentes, heridos y muertos por departamento 
+
+db.sectores_siniestralidad.aggregate([
+  {
+    $group: {
+      _id: "$departamento",
+      suma_accidentes: { $sum: "$numero_accidentes" },
+      suma_heridos: { $sum: "$numero_heridos" },
+      suma_muertos: { $sum: "$numero_muertos" }
+    }
+  }
+]);
+
+#Promedio de accidentes por sector, en cada periodo
+
+db.sectores_siniestralidad.aggregate([
+  { $match: { periodo: "2023" } },
+  {
+    $group: {
+      _id: "$periodo",
+      promedio_accidentes: { $avg: "$numero_accidentes" }
+    }
+  }
+]);
+
+#sectores con mayores tasas de mortalidad
+
+db.sectores_siniestralidad.aggregate([
+  {
+    $project: {
+      sector_id: 1,
+      nombre_sector: 1,
+      municipio: 1,
+      tasa_mortalidad: {
+        $cond: [
+          { $eq: ["$numero_accidentes", 0] },
+          0,
+          { $divide: ["$numero_muertos", "$numero_accidentes"] }
+        ]
+      }
+    }
+  },
+  { $match: { tasa_mortalidad: { $gt: 0.05 } } },
+  { $sort: { tasa_mortalidad: -1 } }
+]);
+
+
